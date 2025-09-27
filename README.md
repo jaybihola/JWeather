@@ -1,4 +1,4 @@
-# JWeather — Simple GUI Weather App (Tkinter + Open‑Meteo)
+# JWeather — Rich Weather App (Tkinter + Open‑Meteo)
 
 JWeather is a lightweight desktop application built with Python's Tkinter that lets you quickly check current weather for a location by either:
 - Entering latitude and longitude, or
@@ -8,13 +8,14 @@ The app uses the free Open‑Meteo APIs for both weather and geocoding.
 
 
 ## Features
-- Two-tab interface:
-  - Lat/Lon tab: manually input coordinates.
-  - City tab: search by city name (auto-resolves to coordinates).
-- Shows current:
-  - Temperature (°C by default from the API)
-  - Precipitation
-  - Snowfall
+- Light mode theme with clean cards and iOS-blue accents.
+- Responsive layout: resizable window with mobile-style stacked layout when narrow.
+- Sidebar with two input modes in a Notebook:
+  - Lat/Lon: manually input coordinates
+  - City: search by city name (default tab; auto-detects your city via IP on launch when possible)
+- Current section: big temperature, condition icon, humidity, wind, cloud cover, UV.
+- Hourly section: embedded line chart (Canvas) for next 24h temperatures; click to open quick details.
+- Daily section: 6-day min/max bars with icons, plus a weekly insight (range and warming/cooling trend). Click any day to see a full breakdown (hi/low, hourly min/max/average, and morning/afternoon/evening averages).
 - Input validation for latitude (−90…90) and longitude (−180…180).
 - Clear status messages and error handling (network timeouts, invalid inputs, no search results).
 
@@ -59,24 +60,26 @@ From the project root:
 ```bash
 python main.py
 ```
-The main window titled "Weather data fetcher" will open.
+The main window titled "JWeather" will open with a light theme in a single-column layout (sidebar on top, content below). By default, the City tab is selected and the app attempts to auto-detect your city via your IP address; if successful, it fetches weather automatically. The window is resizable; charts expand with the available width. Use the sidebar to enter a city or coordinates, then click Fetch to populate the Current, Hourly, and Daily sections. You can click the Current, Hourly, or any day in the This Week section for quick details.
 
 
 ## How to Use
 - Lat / Lon tab:
   1. Enter a latitude (−90 to 90) and longitude (−180 to 180).
-  2. Click "Get weather data".
-  3. The output box shows current temperature, precipitation, and snowfall.
+  2. Click "Fetch".
+  3. The Current, Hourly, and Daily sections will update.
 
 - City tab:
   1. Enter a city name (e.g., "Paris").
-  2. Click "Get weather data".
-  3. The app queries Open‑Meteo's geocoding API to find coordinates, displays the resolved place name and coordinates, then fetches the current weather for those coordinates.
+  2. Click "Fetch".
+  3. The app geocodes the city to coordinates, syncs the Lat/Lon fields, and updates all sections.
 
 
 ## APIs Used
 - Weather: https://api.open-meteo.com/v1/forecast
-  - Current fields requested: `temperature_2m`, `is_day`, `precipitation`, `rain`, `showers`, `snowfall`
+  - Current fields: temperature_2m, apparent_temperature, relative_humidity_2m, dew_point_2m, is_day, precipitation, rain, showers, snowfall, cloud_cover, pressure_msl, surface_pressure, wind_speed_10m, wind_gusts_10m, wind_direction_10m, visibility, uv_index
+  - Hourly: temperature_2m (next 24h charted)
+  - Daily: temperature_2m_max, temperature_2m_min (6-day bars)
 - Geocoding: https://geocoding-api.open-meteo.com/v1/search
   - Parameters include `name`, `count=1`, `language=en`, `format=json`
 
@@ -84,8 +87,10 @@ Both APIs are free and do not require an API key at the time of writing.
 
 
 ## Network and Timeouts
-- Network requests use a 10-second timeout.
-- Errors (e.g., connection failure, non-200 responses) are displayed in the output box.
+- Auto-detect and weather fetch run off the UI thread to keep the app responsive.
+- IP geolocation uses multiple providers in parallel with ~3.5s per-provider timeouts and picks the first successful result.
+- Geocoding requests use a 6-second timeout; weather requests use a 7-second timeout.
+- Errors (e.g., connection failure, non-200 responses) are shown via a dialog and in the status text in the sidebar.
 
 
 ## Project Structure
@@ -97,11 +102,11 @@ JWeather/
 
 
 ## Code Overview
-- `fetch_weather(latVal, lonVal, out_widget)`: Validates inputs, calls Open‑Meteo weather API, and writes results to the provided text widget.
+- `fetch_weather(latVal, lonVal)`: Validates inputs, calls Open‑Meteo weather API (current, hourly, daily), and returns a structured dict.
+- Controller updates three sections: Current card, Hourly chart (Canvas), Daily grid.
 - City tab flow:
   - Calls Open‑Meteo geocoding API to resolve the city to coordinates.
-  - Displays resolved place name and coordinates.
-  - Calls `fetch_weather` with those coordinates.
+  - Syncs the Lat/Lon fields and triggers fetch.
 
 
 ## Troubleshooting
